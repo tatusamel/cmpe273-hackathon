@@ -1,5 +1,5 @@
 // src/components/Chat.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Message } from "../types/Message";
 import { InputArea } from "./InputArea";
 import { MessageList } from "./MessageList";
@@ -13,88 +13,110 @@ interface Conversation {
 }
 
 export const Chat: React.FC = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: "1",
-      title: "Hunger in Africa",
-      createdAt: new Date(),
-      messages: [],
-    },
-    {
-      id: "2",
-      title: "Possible solutions for ...",
-      createdAt: new Date(),
-      messages: [],
-    },
-  ]);
-  const [activeConversationId, setActiveConversationId] = useState("1");
-  const activeConversation = conversations.find(
-    (c) => c.id === activeConversationId
-  );
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<
+    number | null
+  >(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+
+  const BASE_URL = "http://localhost:5001";
+
+  useEffect(() => {
+    fetch(`${BASE_URL}/api/conversations`)
+      .then((res) => res.json())
+      .then((data) => {
+        setConversations(data);
+        if (data.length > 0) {
+          setActiveConversationId(data[0].id);
+        }
+      });
+  }, []);
+
+  // Fetch messages when activeConversationId changes
+  useEffect(() => {
+    if (activeConversationId !== null) {
+      fetch(`${BASE_URL}/api/conversations/${activeConversationId}/messages`)
+        .then((res) => res.json())
+        .then((data) => {
+          setMessages(data);
+        });
+    }
+  }, [activeConversationId]);
 
   const handleNewConversation = () => {
-    const newConv: Conversation = {
-      id: Date.now().toString(),
-      title: "New Conversation",
-      createdAt: new Date(),
-      messages: [],
-    };
-    setConversations((prev) => [newConv, ...prev]);
-    setActiveConversationId(newConv.id);
+    fetch(`${BASE_URL}/api/conversations`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ title: "New Conversation" }),
+    })
+      .then((res) => res.json())
+      .then((newConv) => {
+        setConversations((prev) => [newConv, ...prev]);
+        setActiveConversationId(newConv.id);
+        setMessages([]);
+      });
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    fetch(`${BASE_URL}/api/conversations/${parseInt(id)}`, {
+      method: "DELETE",
+    }).then(() => {
+      setConversations((prev) => prev.filter((conv) => conv.id !== id));
+      setActiveConversationId(null);
+      setMessages([]);
+    });
+  };
+
+  const handleRenameConversation = (id: string, title: string) => {
+    fetch(`${BASE_URL}/api/conversations/${parseInt(id)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ title }),
+    })
+      .then((res) => res.json())
+      .then((updatedConv) => {
+        setConversations((prev) =>
+          prev.map((conv) => (conv.id === updatedConv.id ? updatedConv : conv))
+        );
+      });
   };
 
   const handleSendMessage = (content: string) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      sender: "user",
-      content,
-    };
-
-    setConversations((prev) =>
-      prev.map((conv) => {
-        if (conv.id === activeConversationId) {
-          return {
-            ...conv,
-            messages: [...conv.messages, userMessage],
-            title: content.slice(0, 30) + "...",
-          };
-        }
-        return conv;
-      })
-    );
-
-    setTimeout(() => {
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        sender: "ai",
-        content: "Alright, I am looking into it.",
-      };
-
-      setConversations((prev) =>
-        prev.map((conv) => {
-          if (conv.id === activeConversationId) {
-            return {
-              ...conv,
-              messages: [...conv.messages, aiMessage],
-            };
-          }
-          return conv;
-        })
-      );
-    }, 1000);
+    if (activeConversationId !== null) {
+      fetch(`${BASE_URL}/api/conversations/${activeConversationId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content }),
+      }).then(() => {
+        // Fetch updated messages
+        fetch(`${BASE_URL}/api/conversations/${activeConversationId}/messages`)
+          .then((res) => res.json())
+          .then((data) => {
+            setMessages(data);
+          });
+      });
+    }
   };
 
   return (
     <div className="min-h-screen bg-[#1f2023] flex">
       <Sidebar
         conversations={conversations}
-        activeId={activeConversationId}
-        onSelect={setActiveConversationId}
+        activeId={activeConversationId ? activeConversationId.toString() : ""}
+        onSelect={(id) => setActiveConversationId(parseInt(id))}
         onNew={handleNewConversation}
+        onDeleteConversation={handleDeleteConversation}
+        onRenameConversation={handleRenameConversation}
       />
       <div className="flex-1 flex flex-col h-screen">
         <MessageList
-          messages={activeConversation?.messages || []}
+          messages={messages || []}
           onSendMessage={handleSendMessage}
         />
         <InputArea onSendMessage={handleSendMessage} />
