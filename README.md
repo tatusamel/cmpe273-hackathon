@@ -1,5 +1,10 @@
 # cmpe273-hackathon
 
+### Group Members
+Anthony Vann : 013208962
+Nisarg Prajapati : 018202626
+Serhat Gundem : 018183828
+
 ### Demo Video
 You can see the demo video [here](https://drive.google.com/file/d/1bmobOqiOJMbP-QL545LIhCoeTK5OOuGU/view?usp=sharing)
 
