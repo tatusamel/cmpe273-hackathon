@@ -4,16 +4,11 @@ import { Message } from "../types/Message";
 import { InputArea } from "./InputArea";
 import { MessageList } from "./MessageList";
 import { Sidebar } from "./Sidebar";
-
-interface Conversation {
-  id: string;
-  title: string;
-  createdAt: Date;
-  messages: Message[];
-}
+import { Conversation } from "../types/Conversation";
 
 export const Chat: React.FC = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<
     number | null
   >(null);
@@ -87,20 +82,43 @@ export const Chat: React.FC = () => {
 
   const handleSendMessage = (content: string) => {
     if (activeConversationId !== null) {
+      const tempUserMessage = {
+        id: `temp-${Date.now()}`,
+        sender: "user" as "user" | "ai",
+        content,
+        timestamp: new Date().toISOString(),
+        conversation_id: activeConversationId,
+      };
+
+      setMessages((prev) => [...prev, tempUserMessage]);
+      setIsLoading(true);
+
       fetch(`${BASE_URL}/api/conversations/${activeConversationId}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ content }),
-      }).then(() => {
-        // Fetch updated messages
-        fetch(`${BASE_URL}/api/conversations/${activeConversationId}/messages`)
-          .then((res) => res.json())
-          .then((data) => {
-            setMessages(data);
-          });
-      });
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to send message");
+          return fetch(
+            `${BASE_URL}/api/conversations/${activeConversationId}/messages`
+          );
+        })
+        .then((res) => res.json())
+        .then((data) => {
+          setMessages(data);
+          setIsLoading(false);
+        })
+        .catch((error) => {
+          // Revert optimistic update on error
+          setMessages((prev) =>
+            prev.filter((msg) => msg.id !== tempUserMessage.id)
+          );
+          setIsLoading(false);
+          console.error("Error sending message:", error);
+        });
     }
   };
 
@@ -116,8 +134,11 @@ export const Chat: React.FC = () => {
       />
       <div className="flex-1 flex flex-col h-screen">
         <MessageList
+          conversations={conversations}
           messages={messages || []}
           onSendMessage={handleSendMessage}
+          onNewConversation={handleNewConversation}
+          isLoading={isLoading}
         />
         <InputArea onSendMessage={handleSendMessage} />
       </div>

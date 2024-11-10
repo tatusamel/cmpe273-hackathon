@@ -4,7 +4,7 @@ class Conversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, default=db.func.now())
-    messages = db.relationship('Message', backref='conversation', lazy=True)
+    messages = db.relationship('Message', backref='conversation', lazy=True, cascade='all, delete-orphan')
 
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)

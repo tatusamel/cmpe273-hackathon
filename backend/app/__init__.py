@@ -7,6 +7,15 @@ import redis
 db = SQLAlchemy()
 migrate = Migrate()
 
+def reset_redis():
+    """Reset Redis by flushing all keys in the current database"""
+    try:
+        redis_client.flushdb()
+        return True
+    except redis.RedisError as e:
+        print(f"Redis reset error: {e}")
+        return False
+    
 def create_app():
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
