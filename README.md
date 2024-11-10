@@ -1,7 +1,11 @@
 # cmpe273-hackathon
 
-## Demo Video
+### Demo Video
 You can see the demo video [here](https://drive.google.com/file/d/1bmobOqiOJMbP-QL545LIhCoeTK5OOuGU/view?usp=sharing)
+
+### Collab File 
+This file is where we turn the pages into images and we embed each image into an index. `Hackathon.ipynb`
+
 
 ## Installation
 
